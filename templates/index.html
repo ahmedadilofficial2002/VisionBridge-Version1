@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VisionBridge</title>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #080c14;
+      --surface: #0f1623;
+      --border: #1e2d45;
+      --accent: #00e5ff;
+      --accent2: #7b61ff;
+      --green: #00f5a0;
+      --red: #ff4d6d;
+      --text: #e2eaf5;
+      --muted: #4a6080;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 32px 16px;
+      gap: 24px;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(var(--border) 1px, transparent 1px),
+        linear-gradient(90deg, var(--border) 1px, transparent 1px);
+      background-size: 40px 40px;
+      opacity: 0.3;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .content {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      max-width: 760px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 24px;
+    }
+
+    header { text-align: center; }
+
+    header h1 {
+      font-family: 'Space Mono', monospace;
+      font-size: clamp(1.8rem, 5vw, 2.8rem);
+      letter-spacing: -1px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    header p {
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 0.95rem;
+      line-height: 1.6;
+    }
+
+    header p b {
+      color: var(--accent);
+      font-family: 'Space Mono', monospace;
+      font-size: 0.85rem;
+    }
+
+    .video-wrap {
+      width: 100%;
+      border-radius: 16px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      background: #000;
+      position: relative;
+    }
+
+    video {
+      width: 100%;
+      display: block;
+      min-height: 200px;
+      background: #000;
+    }
+
+    canvas { display: none; }
+
+    .status-badge {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      background: rgba(0,0,0,0.7);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 4px 12px;
+      font-family: 'Space Mono', monospace;
+      font-size: 0.7rem;
+      color: var(--muted);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .status-badge .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--muted);
+      transition: background 0.3s;
+    }
+
+    .status-badge.active .dot {
+      background: var(--green);
+      animation: pulse 1.2s infinite;
+    }
+
+    .status-badge.listening .dot {
+      background: var(--red);
+      animation: pulse 0.6s infinite;
+    }
+
+    .status-badge.processing .dot {
+      background: var(--accent);
+      animation: pulse 0.9s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+
+    .controls {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      justify-content: center;
+      align-items: center;
+    }
+
+    button {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.85rem;
+      padding: 12px 24px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--surface);
+      color: var(--text);
+      cursor: pointer;
+      transition: all 0.2s;
+      letter-spacing: 0.5px;
+    }
+
+    button:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+      transform: translateY(-1px);
+    }
+
+    button:active { transform: translateY(0); }
+
+    #startBtn {
+      border-color: var(--green);
+      color: var(--green);
+    }
+
+    #startBtn:hover {
+      background: rgba(0,245,160,0.08);
+    }
+
+    #micBtn {
+      background: linear-gradient(135deg, var(--accent2), var(--accent));
+      border: none;
+      color: #fff;
+      font-size: 1rem;
+      padding: 14px 32px;
+    }
+
+    #micBtn:hover {
+      opacity: 0.85;
+      color: #fff;
+    }
+
+    #micBtn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    #stopBtn {
+      border-color: var(--red);
+      color: var(--red);
+    }
+
+    #stopBtn:hover {
+      background: rgba(255,77,109,0.08);
+    }
+
+    .lang-picker {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px 14px;
+      color: var(--text);
+      font-family: 'Space Mono', monospace;
+    }
+
+    .lang-picker label {
+      color: var(--accent);
+      font-size: 1rem;
+    }
+
+    .lang-picker select {
+      background: transparent;
+      border: none;
+      color: var(--text);
+      font-family: 'Space Mono', monospace;
+      font-size: 0.85rem;
+      outline: none;
+      cursor: pointer;
+    }
+
+    .lang-picker select option {
+      background: var(--surface);
+      color: var(--text);
+    }
+
+    #log {
+      width: 100%;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 20px;
+      font-family: 'Space Mono', monospace;
+      font-size: 0.8rem;
+      line-height: 1.7;
+      color: var(--muted);
+      min-height: 80px;
+    }
+
+    #log .step   { color: var(--accent); }
+    #log .result { color: var(--green); font-size: 0.9rem; }
+    #log .err    { color: var(--red); }
+
+    audio {
+      width: 100%;
+      border-radius: 10px;
+      accent-color: var(--accent);
+    }
+  </style>
+</head>
+<body>
+<div class="content">
+
+  <header>
+    <h1>VisionBridge</h1>
+    <p id="hintText">
+      Press <b>🎤 ASK</b> and ask any visual question.<br />
+      Example: <b>"Is there a chair in front of me?"</b>
+    </p>
+  </header>
+
+  <div class="video-wrap">
+    <video id="video" autoplay playsinline muted></video>
+    <canvas id="captureCanvas"></canvas>
+    <div class="status-badge" id="badge">
+      <span class="dot"></span>
+      <span id="badgeText">OFFLINE</span>
+    </div>
+  </div>
+
+  <div class="controls">
+    <button id="startBtn">▶ START</button>
+    <button id="micBtn" disabled>🎤 ASK</button>
+    <button id="stopBtn">■ STOP</button>
+
+    <div class="lang-picker">
+      <label for="langSelect">🌐</label>
+      <select id="langSelect">
+        <option value="en" selected>English</option>
+        <option value="fr">Français</option>
+      </select>
+    </div>
+  </div>
+
+  <div id="log">Ready. Press START to begin.</div>
+  <audio id="player" controls></audio>
+
+</div>
+
+<script>
+  const video      = document.getElementById("video");
+  const canvas     = document.getElementById("captureCanvas");
+  const logDiv     = document.getElementById("log");
+  const player     = document.getElementById("player");
+  const micBtn     = document.getElementById("micBtn");
+  const badge      = document.getElementById("badge");
+  const badgeText  = document.getElementById("badgeText");
+  const langSelect = document.getElementById("langSelect");
+  const hintText   = document.getElementById("hintText");
+
+  let stream = null;
+  let busy = false;
+
+  let lastDetectAt = 0;
+  const DETECT_COOLDOWN_MS = 2500;
+
+  let lastQuestionAsked = "";
+  let lastQuestionAt = 0;
+
+  function log(msg, type = "") {
+    const cls = type ? ` class="${type}"` : "";
+    logDiv.innerHTML = `<span${cls}>${msg}</span>`;
+    console.log(msg);
+  }
+
+  function setBadge(state, label) {
+    badge.className = "status-badge " + state;
+    badgeText.textContent = label;
+  }
+
+  function updateLanguageHint() {
+    if (langSelect.value === "fr") {
+      hintText.innerHTML = `
+        Appuyez sur <b>🎤 ASK</b> et posez n'importe quelle question sur l'image.<br />
+        Exemple : <b>"Y a-t-il une chaise devant moi ?"</b>
+      `;
+    } else {
+      hintText.innerHTML = `
+        Press <b>🎤 ASK</b> and ask any visual question.<br />
+        Example: <b>"Is there a chair in front of me?"</b>
+      `;
+    }
+  }
+
+  async function startCamera() {
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      video.srcObject = stream;
+      await video.play();
+      micBtn.disabled = false;
+      setBadge("active", "LIVE");
+      log("✅ Camera and microphone ready.");
+    } catch (e) {
+      log("❌ Error: " + e.message, "err");
+    }
+  }
+
+  async function recordAudio(ms = 5000) {
+    return new Promise((resolve, reject) => {
+      if (!stream) {
+        reject(new Error("Camera not started"));
+        return;
+      }
+
+      const audioTracks = stream.getAudioTracks();
+      if (!audioTracks.length) {
+        reject(new Error("No microphone found"));
+        return;
+      }
+
+      const recorder = new MediaRecorder(new MediaStream(audioTracks));
+      const chunks = [];
+
+      recorder.ondataavailable = e => {
+        if (e.data.size > 0) chunks.push(e.data);
+      };
+
+      recorder.onstop = () => resolve(new Blob(chunks, { type: "audio/webm" }));
+      recorder.onerror = e => reject(e.error || new Error("Recording failed"));
+
+      recorder.start();
+      setTimeout(() => recorder.stop(), ms);
+    });
+  }
+
+  async function captureImage() {
+    const targetWidth = 320;
+    const targetHeight = 450;
+
+    canvas.width = targetWidth;
+    canvas.height = targetHeight;
+
+    canvas.getContext("2d").drawImage(
+      video,
+      0, 0, video.videoWidth, video.videoHeight,
+      0, 0, targetWidth, targetHeight
+    );
+
+    return new Promise(resolve =>
+      canvas.toBlob(resolve, "image/jpeg", 0.5)
+    );
+  }
+
+  async function pipeline() {
+    if (busy) return;
+    busy = true;
+    micBtn.disabled = true;
+
+    try {
+      if (!stream) {
+        log("⚠️ Please click START first.", "err");
+        busy = false;
+        micBtn.disabled = false;
+        return;
+      }
+
+      const now = Date.now();
+      if (now - lastDetectAt < DETECT_COOLDOWN_MS) {
+        log("⚠️ Please wait a moment before asking again.", "err");
+        busy = false;
+        micBtn.disabled = false;
+        return;
+      }
+
+      if (!video.videoWidth || !video.videoHeight) {
+        log("⚠️ Camera frame not ready yet.", "err");
+        busy = false;
+        micBtn.disabled = false;
+        return;
+      }
+
+      const selectedLang = langSelect.value;
+
+      // 1) Record + STT
+      setBadge("listening", "LISTENING");
+      log("🎤 Listening for your question...", "step");
+      const audioBlob = await recordAudio(5000);
+
+      setBadge("processing", "PROCESSING");
+      log("⏳ Converting speech to text...", "step");
+
+      const fd1 = new FormData();
+      fd1.append("audio", audioBlob, "speech.webm");
+
+      const sttRes = await fetch("/stt", {
+        method: "POST",
+        body: fd1
+      });
+
+      const sttData = await sttRes.json();
+
+      if (sttData.error) {
+        log("❌ STT Error: " + sttData.error, "err");
+        busy = false;
+        micBtn.disabled = false;
+        setBadge("active", "LIVE");
+        return;
+      }
+
+      const question = (sttData.text || "").trim();
+
+      if (!question) {
+        log("⚠️ No speech detected. Try again.", "err");
+        busy = false;
+        micBtn.disabled = false;
+        setBadge("active", "LIVE");
+        return;
+      }
+
+      const normalizedQuestion = question.toLowerCase().trim();
+      const timeSinceLastQuestion = now - lastQuestionAt;
+
+      if (normalizedQuestion === lastQuestionAsked && timeSinceLastQuestion < 8000) {
+        log("⚠️ Same question detected. Move the camera or ask differently.", "err");
+        busy = false;
+        micBtn.disabled = false;
+        setBadge("active", "LIVE");
+        return;
+      }
+
+      lastQuestionAsked = normalizedQuestion;
+      lastQuestionAt = now;
+
+      log(`💬 Question: "${question}"`, "step");
+
+      // 2) Capture image
+      log("📷 Capturing image...", "step");
+      const imgBlob = await captureImage();
+
+      if (!imgBlob) {
+        log("❌ Failed to capture image.", "err");
+        busy = false;
+        micBtn.disabled = false;
+        setBadge("active", "LIVE");
+        return;
+      }
+
+      // 3) Ask image question
+      log("🔍 Analyzing image based on your question...", "step");
+      const fd2 = new FormData();
+      fd2.append("image", imgBlob, "frame.jpg");
+      fd2.append("question", question);
+      fd2.append("lang", selectedLang);
+
+      lastDetectAt = Date.now();
+
+      const detRes = await fetch("/detect", {
+        method: "POST",
+        body: fd2
+      });
+
+      const detData = await detRes.json().catch(() => ({}));
+
+      if (!detRes.ok) {
+        if (detRes.status === 429) {
+          log("⚠️ " + (detData.error || "Gemini limit reached. Please wait a bit."), "err");
+        } else {
+          log("❌ Detection Error: " + (detData.error || "Unknown error"), "err");
+        }
+        busy = false;
+        micBtn.disabled = false;
+        setBadge("active", "LIVE");
+        return;
+      }
+
+      if (detData.error) {
+        log("❌ Detection Error: " + detData.error, "err");
+        busy = false;
+        micBtn.disabled = false;
+        setBadge("active", "LIVE");
+        return;
+      }
+
+      const finalText = detData.answer || "I cannot answer clearly from this image.";
+
+      if (detData?.perf?.cache_hit) {
+        log(`✅ Answer (cached): ${finalText}`, "result");
+      } else {
+        log(`✅ Answer: ${finalText}`, "result");
+      }
+
+      // 4) TTS
+      log("🔊 Speaking...", "step");
+      const ttsRes = await fetch("/tts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          text: finalText,
+          lang: selectedLang
+        })
+      });
+
+      if (!ttsRes.ok) {
+        const err = await ttsRes.json().catch(() => ({}));
+        throw new Error(err.error || "TTS failed");
+      }
+
+      const audioUrl = URL.createObjectURL(await ttsRes.blob());
+      player.src = audioUrl;
+
+      try {
+        await player.play();
+      } catch {
+        log("⚠️ Press play below to hear the answer.", "step");
+      }
+
+      log(`✅ Done.`, "result");
+
+    } catch (e) {
+      log("❌ Error: " + e.message, "err");
+    }
+
+    busy = false;
+    micBtn.disabled = false;
+    setBadge("active", "LIVE");
+  }
+
+  langSelect.addEventListener("change", updateLanguageHint);
+  updateLanguageHint();
+
+  document.getElementById("startBtn").onclick = startCamera;
+  document.getElementById("micBtn").onclick = pipeline;
+  document.getElementById("stopBtn").onclick = () => {
+    if (stream) {
+      stream.getTracks().forEach(t => t.stop());
+      video.srcObject = null;
+      stream = null;
+      micBtn.disabled = true;
+      setBadge("", "OFFLINE");
+      log("⏹ Stopped.");
+    }
+  };
+</script>
+</body>
+</html>
